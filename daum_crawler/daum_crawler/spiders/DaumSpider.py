@@ -34,7 +34,7 @@ class DaumCrawlerSpider(scrapy.Spider):
 
         # 카테고리별로 뉴스기사 수집
         for cate in self.category.keys():
-            query_url = r'?&consumerType=HARMONY&createDt={0}&discoveryTag%5B0%5D=%257B%2522group%2522%253A%2522media%2522%252C%2522key%2522%253A%2522defaultCategoryId3%2522%252C%2522value%2522%253A%2522{1}%2522%257D&size=100'.format(
+            query_url = r'?consumerType=HARMONY&createDt={0}&discoveryTag%5B0%5D=%257B%2522group%2522%253A%2522media%2522%252C%2522key%2522%253A%2522defaultCategoryId3%2522%252C%2522value%2522%253A%2522{1}%2522%257D&size=100'.format(
                 createDt,
                 cate
             )
@@ -97,26 +97,6 @@ class DaumCrawlerSpider(scrapy.Spider):
             createDt = createDt,
             cate = cate
         ))
-    
-
-    # def stickers_crawl(self, itemKey : str):
-    #     '''
-    #     스티커 크롤링 함수
-    #     '''
-    #     headers = {"authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmb3J1bV9rZXkiOiJuZXdzIiwidXNlcl92aWV3Ijp7ImlkIjoxODQwNjExNSwiaWNvbiI6Imh0dHBzOi8vdDEuZGF1bWNkbi5uZXQvcHJvZmlsZS9jSFVGa2FKX2FaMTAiLCJwcm92aWRlcklkIjoiREFVTSIsImRpc3BsYXlOYW1lIjoi7J207Iqs6riwIn0sImdyYW50X3R5cGUiOiJhbGV4X2NyZWRlbnRpYWxzIiwic2NvcGUiOltdLCJleHAiOjE2Njk5MDQ1MDMsImF1dGhvcml0aWVzIjpbIlJPTEVfREFVTSIsIlJPTEVfSURFTlRJRklFRCIsIlJPTEVfVVNFUiJdLCJqdGkiOiJmNTkwYjAxZi1jZjBmLTQ2YzktYjUyYy03N2E5ZTVkYTk1Y2EiLCJmb3J1bV9pZCI6LTk5LCJjbGllbnRfaWQiOiIyNkJYQXZLbnk1V0Y1WjA5bHI1azc3WTgifQ.GJWFgTKX43CZeblHrm6PUx2sZNgGPA5zqaIetU8jePI"}
-    #     reactionURL = 'https://action.daum.net/apis/v1/reactions/home?itemKey={}'.format(itemKey)
-    #     response = TextResponse(url = reactionURL, headers = headers)
-
-    #     reactionjson = json.loads(response.text)['item']['stats']
-
-    #     reaction_dict = {
-    #             '추천해요': reactionjson['RECOMMEND'],
-    #             '좋아요': reactionjson['LIKE'],
-    #             '감동이에요': reactionjson['IMPRESS'],
-    #             '화나요': reactionjson['ANGRY'],
-    #             '슬퍼요': reactionjson['SAD']
-    #     }
-    #     return reaction_dict
 
 
     
