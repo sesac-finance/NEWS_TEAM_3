@@ -5,6 +5,9 @@ from daum_crawler.items import DaumNewsCrawlerItem
 import pandas as pd
 import json
 
+from datetime import datetime
+from scrapy.selector import Selector
+
 class DaumCrawlerSpider(scrapy.Spider):
     name = "daum_crawler"
 
@@ -38,23 +41,28 @@ class DaumCrawlerSpider(scrapy.Spider):
 
     def parse(self, response, createDt : str, cate : int):
 
+        # json parsing
         jsonresponse = json.loads(response.text)
         item = DaumNewsCrawlerItem()
-        # WritedAt = scrapy.Field()
-        # Stickers = scrapy.Field()
 
+        # after for query
         after = jsonresponse['result']['contents'][-1]['searchId']
     
         for i in range(100):
             item['MainCategory'] = self.category[cate][0]
             item['SubCategory'] = self.category[cate][1]
-
             try:
                 item['Title'] = jsonresponse['result']['contents'][i]['title']
                 item['Content'] = jsonresponse['result']['contents'][i]['bodyText']
                 item['URL'] = jsonresponse['result']['contents'][i]['contentUrl']
                 item['Press'] = jsonresponse['result']['contents'][i]['cp']['cpName']
 
+                # WritedAt (%Y-%m-%d %H:%M)
+                body = jsonresponse['result']['contents'][i]['rawContent']['dmcf']
+                date = Selector(text=body).xpath('//feedregdt/text()').get()
+                item['WritedAt'] = datetime.strptime(date.split('.')[0], '%Y-%m-%dT%H:%M:%S').strftime('%Y-%m-%d %H:%M')
+
+                # PhotoURL
                 p = jsonresponse['result']['contents'][i]['media']
                 if len(p) == 0:
                     item['PhotoURL'] = None
