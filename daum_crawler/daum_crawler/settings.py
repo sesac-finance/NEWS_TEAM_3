@@ -12,12 +12,10 @@ BOT_NAME = 'daum_crawler'
 SPIDER_MODULES = ['daum_crawler.spiders']
 NEWSPIDER_MODULE = 'daum_crawler.spiders'
 
-USER_AGENT = 'Mozilla/5.0'
-
 # FEED_EXPORT_ENCODING = 'utf-8-sig'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = 'daum_crawler (+http://www.yourdomain.com)'
+USER_AGENT = 'Mozilla/5.0'
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False
@@ -28,7 +26,7 @@ ROBOTSTXT_OBEY = False
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-#DOWNLOAD_DELAY = 3
+# DOWNLOAD_DELAY = 0.2
 # The download delay setting will honor only one of:
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
