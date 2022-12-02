@@ -12,7 +12,9 @@ BOT_NAME = 'daum_crawler'
 SPIDER_MODULES = ['daum_crawler.spiders']
 NEWSPIDER_MODULE = 'daum_crawler.spiders'
 
-# FEED_EXPORT_ENCODING = 'utf-8-sig'
+FEED_FORMAT = "csv"
+FEED_URI = "daum_news.csv"
+FEED_EXPORT_ENCODING = 'utf-8-sig'
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 USER_AGENT = 'Mozilla/5.0'
