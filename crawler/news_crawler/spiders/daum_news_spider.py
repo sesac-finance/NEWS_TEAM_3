@@ -1,10 +1,11 @@
 # 필요한 패키지 불러오기
 import scrapy
+import requests
+from scrapy.selector import Selector
 import json
 from ..items import NewsItem
-from scrapy.selector import Selector
 from datetime import datetime
-from StickersCrawl import stickers_crawl
+from typing import Union
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -30,6 +31,43 @@ class DaumNewsCrawler(scrapy.Spider):
         1079: ("스포츠", "e-스포츠")
     }
 
+    # URL에 접속하기 위해 필요한 헤더(Header) 정보를 딕셔너리 headers 초기화
+    headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"}
+
+    # ----------------------------------------------------------------------------------------------------
+
+    # __init__() 함수 정의
+    def __init__(self):
+        """
+        스파이더(Spider) 클래스를 생성할 때 실행되는 생성자 함수입니다.\n
+        스티커 반응 URL에 접속하기 위해 필요한 'Authorization' 값을 가져옵니다.
+        """
+
+        # 인증 값을 가져오기 위한 임의의 뉴스 기사 url을 client_id_url에 할당 
+        client_id_url = "https://v.daum.net/v/B8FE1zLZ2m"
+
+        # 딕셔너리 headers에 "referer" 값 추가
+        self.headers["referer"] = client_id_url
+
+        # get() 함수를 사용해 스티커 반응 정보를 요청해 변수 res에 할당
+        client_res = requests.get(url = client_id_url)
+
+        # 클라이언트 ID를 추출해 변수 client_id에 할당
+        client_id = Selector(text = client_res.text).css(".alex-actions").attrib["data-client-id"]
+
+        # 추출한 클라이언트 ID를 넣어 token_url에 할당
+        token_url = "https://alex.daum.net/oauth/token?grant_type=alex_credentials&client_id={}".format(client_id)
+
+        # get() 함수를 사용해 토큰 정보를 요청해 변수 token_res에 할당
+        token_res = requests.get(url = token_url, headers = self.headers)
+
+        # loads() 함수를 사용해 JSON 문자열을 객체로 변환해 각 스티커 반응을 딕셔너리 stickers_dict에 할당
+        access_token = json.loads(token_res.text)["access_token"]
+
+        # 딕셔너리 headers에 "authorization" 값 추가 및 "referer" 값 삭제
+        self.headers["authorization"] = "Bearer " + access_token
+        del self.headers["referer"]
+
     # ----------------------------------------------------------------------------------------------------
 
     # start_requests() 함수 정의
@@ -40,8 +78,7 @@ class DaumNewsCrawler(scrapy.Spider):
         """
 
         # 수집할 한 달 간의 날짜를 담은 search_period 변수 초기화
-        search_period = "20221130000000~20221130235959"
-        #search_period = "20221101000000~20221130235959"
+        search_period = "20221101000000~20221130235959"
 
         # for 반복문을 사용해 뉴스 분류별로 순회
         for category in self.categories.keys():
@@ -85,34 +122,26 @@ class DaumNewsCrawler(scrapy.Spider):
             item["SubCategory"] = self.categories[category][1]
 
             try:
-
-                # 뉴스 기사의 제목, 내용, URL, 사진 URL, 기자, 뉴스사를 각 열에 저장
+                # 뉴스 기사의 제목, 내용, URL, 뉴스사를 각 열에 저장
                 item["Title"] = json_res["result"]["contents"][news]["title"]
                 item["Content"] = json_res["result"]["contents"][news]["bodyText"]
                 item["URL"] = json_res["result"]["contents"][news]["contentUrl"]
                 item["Press"] = json_res["result"]["contents"][news]["cp"]["cpName"]
 
-                # WritedAt (%Y-%m-%d %H:%M)
-                body = json_res["result"]["contents"][news]["rawContent"]["dmcf"]
-                date = Selector(text=body).xpath('//feedregdt/text()').get()
-                item['WritedAt'] = datetime.strptime(date.split('.')[0], '%Y-%m-%dT%H:%M:%S').strftime('%Y-%m-%d %H:%M')
+                # 뉴스 기사의 작성일자를 writed_at_transformer() 함수를 호출하여 저장
+                item["WritedAt"] = self.writed_at_transformer(json_res["result"]["contents"][news]["rawContent"]["dmcf"])
 
-                # PhotoURL
-                p = json_res['result']['contents'][news]['media']
-                if len(p) == 0:
-                    item['PhotoURL'] = None
-                else:
-                    item['PhotoURL'] = str([p[j]['url'] for j in range(len(p))])
+                # 뉴스 기사의 사진 URL을 photo_url_extractor() 함수를 호출하여 저장
+                item["PhotoURL"] = self.photo_url_extractor(json_res["result"]["contents"][news]["media"])
+
+                # 뉴스 기사의 스티커 반응을 stickers_crawler() 함수를 호출하여 저장
+                item["Stickers"] = self.stickers_crawler(json_res["result"]["contents"][news]["metaData"][0]["values"][0])
                 
-                # itemKey for Stickers
-                itemKey = json_res['result']['contents'][news]['metaData'][0]['values'][0]
-                item['Stickers'] = stickers_crawl(itemKey)
-                
-                # 기자 이름이 없으면 언론사 이름으로 대체
+                #  뉴스 기사의 기자 이름을 저장하고, 없는 경우 뉴스사 이름으로 대체
                 try:
-                    item['Writer'] = json_res['result']['contents'][news]['writers'][0]['name']
+                    item["Writer"] = json_res["result"]["contents"][news]["writers"][0]["name"]
                 except:
-                    item['Writer'] = json_res['result']['contents'][news]['cp']['cpName']
+                    item["Writer"] = json_res["result"]["contents"][news]["cp"]["cpName"]
 
                 # 결과 값 반환
                 yield item
@@ -137,3 +166,68 @@ class DaumNewsCrawler(scrapy.Spider):
             search_period = search_period,
             category = category
         ))
+
+    # ----------------------------------------------------------------------------------------------------
+
+    # writed_at_transformer() 함수 정의
+    def writed_at_transformer(self, xml_text : str) -> str:
+        """
+        뉴스의 작성일자가 포함된 XML 문자열을 입력받아 작성일자를 추출해 변환하는 함수입니다.\n
+        '연-월-일 시:분'으로 구성된 문자열(String) 객체를 반환합니다.
+        """
+
+        # 뉴스의 작성일자가 포함된 xml_text에서 뉴스의 작성일자만 추출해 변수 xml_date에 할당
+        xml_date = Selector(text = xml_text).xpath("//feedregdt/text()").get()
+
+        # ① strptime() 메서드를 사용해 datetime 객체로 변환
+        # ② strftime() 메서드를 사용해 데이터베이스에 들어가야 할 양식의 문자열 객체로 변환해 변수 writed_at_date에 할당
+        writed_at_date = datetime.strptime(xml_date.split(".")[0], "%Y-%m-%dT%H:%M:%S").strftime("%Y-%m-%d %H:%M")
+
+        # 결과 값 반환
+        return writed_at_date
+
+    # ----------------------------------------------------------------------------------------------------
+
+    # photo_url_extractor() 함수 정의
+    def photo_url_extractor(self, photo_list : list) -> Union[list, None]:
+        """
+        뉴스의 사진 URL이 포함된 리스트를 입력받아 사진 URL을 추출하는 함수입니다.\n
+        사진 URL들로 구성된 리스트(List)를 반환하고, 만약 사진이 없다면 None 객체를 반환합니다.
+        """
+
+        # 뉴스의 사진이 존재하지 않는 경우 None 값 반환
+        if len(photo_list) == 0: return None
+
+        # 뉴스의 사진이 존재하는 경우 리스트 컴프리헨션(List Comprehension)을 사용해 사진 목록을 추출
+        else:
+            photo_urls = [photo_list[photo]["url"] for photo in range(len(photo_list))]
+
+            # 결과 값 반환
+            return photo_urls
+
+    # ----------------------------------------------------------------------------------------------------
+
+    # stickers_crawler() 함수 정의
+    def stickers_crawler(self, item_key : str) -> dict:
+        """
+        뉴스의 스티커 반응을 크롤링하여 추출하는 함수입니다.\n
+        뉴스의 스티커 반응이 담긴 딕셔너리(Dictionary)를 반환합니다.
+        """
+
+        # 스티커 반응이 존재하는 링크를 stickers_url에 할당
+        stickers_url = "https://action.daum.net/apis/v1/reactions/home?itemKey={}".format(item_key)
+
+        # get() 함수를 사용해 스티커 반응 정보를 요청해 변수 res에 할당
+        res = requests.get(url = stickers_url, headers = self.headers)
+
+        # loads() 함수를 사용해 JSON 문자열을 객체로 변환해 각 스티커 반응을 딕셔너리 stickers_dict에 할당
+        stickers_dict = {
+            "추천해요": json.loads(res.text)["item"]["stats"]["RECOMMEND"],
+            "좋아요": json.loads(res.text)["item"]["stats"]["LIKE"],
+            "감동이에요": json.loads(res.text)["item"]["stats"]["IMPRESS"],
+            "화나요": json.loads(res.text)["item"]["stats"]["ANGRY"],
+            "슬퍼요": json.loads(res.text)["item"]["stats"]["SAD"]
+        }
+
+        # 결과 값 반환
+        return stickers_dict
