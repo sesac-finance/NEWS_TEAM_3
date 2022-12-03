@@ -135,7 +135,7 @@ class NaverNewsCrawler(scrapy.Spider):
     download_delay = 0.15
 
     # URL에 접속하기 위해 필요한 헤더(Header) 정보를 담은 딕셔너리 headers 초기화
-    headers = {"user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"}
+    headers = {"user-agent": "'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"}
 
     # ----------------------------------------------------------------------------------------------------
 
@@ -147,7 +147,7 @@ class NaverNewsCrawler(scrapy.Spider):
         """
 
         # 크롤링을 위해 뉴스 URL을 담은 CSV 파일을 불러와 데이터프레임 생성
-        news_df = pd.read_csv("./../data/news_3_naver_url.csv", header = 0, encoding = "utf-8-sig").iloc[: 100]
+        news_df = pd.read_csv("./../data/news_3_naver_url.csv", header = 0, encoding = "utf-8-sig")
         
         # for 반복문을 사용하여 데이터프레임의 각 행을 순회
         for idx in news_df.index:
@@ -191,10 +191,10 @@ class NaverNewsCrawler(scrapy.Spider):
         item["PhotoURL"] = "".join(response.css(".nbd_im_w .nbd_a img::attr(data-src)").extract())
 
         # 뉴스 기사의 내용이 존재하는 두 가지 경우에 따라 내용을 가져와 할당
-        if not response.css('#dic_area ::text').extract():
-            item["Content"] = "".join(response.css('#dic_area .article ::text').extract())
+        if not response.css("#dic_area ::text").extract():
+            item["Content"] = "".join(response.css("#dic_area .article ::text").extract())
         else:
-            item["Content"] = "".join(response.css('#dic_area ::text').extract())
+            item["Content"] = "".join(response.css("#dic_area ::text").extract())
 
         # 뉴스 기사의 작성일자를 writed_at_transformer() 함수를 호출하여 저장
         item["WritedAt"] = self.writed_at_transformer(response.css(".media_end_head_info_datestamp_time::attr(data-date-time)").get())
@@ -232,7 +232,7 @@ class NaverNewsCrawler(scrapy.Spider):
 
         # 스티커 반응이 존재하는 쿼리 스트링을 제거한 URL을 stickers_base_url에 할당
         stickers_base_url = "https://news.like.naver.com/v1/search/contents"
-        
+
         # 쿼리 스트링(Query String)에 사용할 값을 추출
         first_article_id = news_url.split("/")[5]
         second_article_id = news_url.split("/")[6].split("?")[0]
@@ -241,24 +241,23 @@ class NaverNewsCrawler(scrapy.Spider):
         self.headers["referer"] = news_url
 
         # 쿼리 스트링(Query String)을 stickers_query_url에 할당
-        stickers_query_url = f"?suppress_response_codes=true&callback=jQuery33107358087160083342_1669946908463&q=%5D%7CNEWS%5Bne_{first_article_id}_{second_article_id}%5D&isDuplication=false"
+        stickers_query_url = f"?callback=jQuery33107358087160083342_1669946908463&q=%5D%7CNEWS%5Bne_{first_article_id}_{second_article_id}%5D"
         res = requests.get(stickers_base_url + stickers_query_url , headers = self.headers)
 
         # loads() 함수를 사용해 JSON 문자열을 객체로 변환해 json_res에 할당
         json_res = json.loads(re.search("\((.*?)\);", res.text).group(1))["contents"][0]["reactionMap"]
 
         # 딕셔너리 stickers_dict 초기화
-        stickers_dict ={}
+        stickers_dict ={"쏠쏠정보": 0, "흥미진진": 0, "공감백배": 0, "분석탁월": 0, "후속강추": 0}
 
-        # for 반복문을 사용해 딕셔너리 stickers_dict에 반응 종류를 키(Key), 반응의 수를 값(Value)으로 하여 추가
+        # for 반복문을 사용해 딕셔너리 stickers_dict에 반응의 수를 값(Value)에 추가
         for value in json_res.values():
-            stickers_dict[value["reactionType"]] = value["count"]
-
-        # 실제 출력되는 반응을 담은 딕셔너리 name_dict 초기화
-        name_dict = {"useful": "쏠쏠정보", "recommend": "후속강추", "analytical": "분석탁월", "wow": "흥미진진", "touched": "공감백배"}
-
-        # 딕셔너리 stickers_dict의 키(Key)를 실제 출력되는 반응 이름으로 대체
-        stickers_dict = dict((name_dict[key], value) for (key, value) in stickers_dict.items())
+            if value["reactionType"] == "useful": stickers_dict["쏠쏠정보"] += value["count"]
+            elif value["reactionType"] == "wow": stickers_dict["흥미진진"] += value["count"]
+            elif value["reactionType"] == "touched": stickers_dict["공감백배"] += value["count"]
+            elif value["reactionType"] == "analytical": stickers_dict["분석탁월"] += value["count"]
+            elif value["reactionType"] == "recommend": stickers_dict["후속강추"] += value["count"]
+            else: pass
 
         # 결과 값 반환
         return stickers_dict
