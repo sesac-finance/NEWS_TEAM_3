@@ -36,11 +36,13 @@ class MultiCSVItemPipeline(object):
             export_name = self.export_names[0]
 
             # 50,000개 데이터가 담길 수 있도록 지정한 파일 이름으로 여러 개의 CSV 파일을 생성 후 열기
-            self.files = dict([(file_num, open(self.export_dir + f"{export_name}_{file_num}.csv", "wb")) for file_num in range(1, 4, 1)])
+            self.files = dict([(file_num, open(self.export_dir + f"news_3_{export_name}_{file_num}.csv", "wb")) for file_num in range(1, 4, 1)])
 
             # 각 CSV 파일로 내보내기 시작
             self.exporters = dict([(file_num, CsvItemExporter(self.files[file_num], encoding = "utf-8-sig")) for file_num in range(1, 4, 1)])
-            [csv_exporter.start_exporting() for csv_exporter in self.exporters.values()]
+            for csv_exporter in self.exporters.values():
+                csv_exporter.fields_to_export = ["MainCategory", "SubCategory", "WritedAt", "Title", "Content", "URL", "PhotoURL", "Writer", "Press", "Stickers"] 
+                csv_exporter.start_exporting()
 
         # Spider 클래스 객체 이름이 "NaverNewsURLCrawler"인 경우
         elif spider.name == "NaverNewsURLCrawler":
@@ -49,10 +51,11 @@ class MultiCSVItemPipeline(object):
             export_name = self.export_names[1]
     
             # 지정한 파일 이름의 CSV 파일을 생성 후 열기
-            self.file = open(self.export_dir + f"{export_name}.csv", "wb")
+            self.file = open(self.export_dir + f"news_3_{export_name}.csv", "wb")
 
             # CSV 파일로 내보내기 시작
             self.exporter = CsvItemExporter(self.file, encoding = "utf-8-sig")
+            self.exporter.fields_to_export = ["MainCategory", "SubCategory", "Title", "URL"] 
             self.exporter.start_exporting()
     
         # Spider 클래스 객체 이름이 "NaverNewsCrawler"인 경우
@@ -62,14 +65,16 @@ class MultiCSVItemPipeline(object):
             export_name = self.export_names[2]
 
             # 네이버 뉴스 URL을 담은 CSV 파일을 불러와 데이터프레임 생성
-            news_df = pd.read_csv(self.export_dir + "naver_url.csv", header = 0, encoding = "utf-8-sig")
+            news_df = pd.read_csv(self.export_dir + "news_3_naver_url.csv", header = 0, encoding = "utf-8-sig")
 
             # 50,000개 데이터가 담길 수 있도록 지정한 파일 이름으로 여러 개의 CSV 파일을 생성 후 열기
-            self.files = dict([(file_num, open(self.export_dir + f"{export_name}_{file_num}.csv", "wb")) for file_num in range(1, len(news_df) // 50000 + 2, 1)])
+            self.files = dict([(file_num, open(self.export_dir + f"news_3_{export_name}_{file_num}.csv", "wb")) for file_num in range(1, len(news_df) // 50000 + 2, 1)])
 
             # 각 CSV 파일로 내보내기 시작
             self.exporters = dict([(file_num, CsvItemExporter(self.files[file_num], encoding = "utf-8-sig")) for file_num in range(1, len(news_df) // 50000 + 2, 1)])
-            [csv_exporter.start_exporting() for csv_exporter in self.exporters.values()]
+            for csv_exporter in self.exporters.values():
+                csv_exporter.fields_to_export = ["MainCategory", "SubCategory", "WritedAt", "Title", "Content", "URL", "PhotoURL", "Writer", "Press", "Stickers"] 
+                csv_exporter.start_exporting()
 
         # Spider 클래스 객체 이름이 "NaverNewsCommentCrawler"인 경우
         else:
@@ -78,14 +83,16 @@ class MultiCSVItemPipeline(object):
             export_name = self.export_names[3]
 
             # 네이버 뉴스 URL을 담은 CSV 파일을 불러와 데이터프레임 생성
-            news_df = pd.read_csv(self.export_dir + "naver_url.csv", header = 0, encoding = "utf-8-sig")
+            news_df = pd.read_csv(self.export_dir + "news_3_naver_url.csv", header = 0, encoding = "utf-8-sig")
 
             # 50,000개 데이터가 담길 수 있도록 지정한 파일 이름으로 여러 개의 CSV 파일을 생성 후 열기
-            self.files = dict([(file_num, open(self.export_dir + f"{export_name}_{file_num}.csv", "wb")) for file_num in range(1, 21, 1)])
+            self.files = dict([(file_num, open(self.export_dir + f"news_3_{export_name}_{file_num}.csv", "wb")) for file_num in range(1, 21, 1)])
 
             # 각 CSV 파일로 내보내기 시작
             self.exporters = dict([(file_num, CsvItemExporter(self.files[file_num], encoding = "utf-8-sig")) for file_num in range(1, 21, 1)])
-            [csv_exporter.start_exporting() for csv_exporter in self.exporters.values()]
+            for csv_exporter in self.exporters.values():
+                csv_exporter.fields_to_export = ["URL", "UserID", "UserName", "WritedAt", "Content"] 
+                csv_exporter.start_exporting()
 
     # ----------------------------------------------------------------------------------------------------
 
