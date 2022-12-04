@@ -108,7 +108,7 @@ class MultiCSVItemPipeline(object):
 
             # 값이 존재하지 않는 경우 파이프라인에서 해당 객체 제거 후 오류 메시지 출력
             if not all(item.values()):
-                print(">>> 다음과 같이 크롤링한 데이터가 존재하지 않습니다: ", item)
+                print(">>> 다음과 같이 크롤링한 데이터가 존재하지 않습니다: ", item, "\n")
                 raise DropItem()
 
             # Item 객체를 CSV 파일로 내보내기
@@ -120,6 +120,9 @@ class MultiCSVItemPipeline(object):
             # Item 객체를 50,000개씩 각 CSV 파일로 내보내기
             self.item_cnt += 1
             list(self.exporters.values())[(self.item_cnt - 1) // 50000].export_item(item)
+
+            # 크롤링 중인 객체 수를 알려주는 메시지 출력
+        print(">>> {0}번째 데이터의 수집이 완료되었습니다.\n".format(self.item_cnt))
 
         # 결과 값 반환
         return item
