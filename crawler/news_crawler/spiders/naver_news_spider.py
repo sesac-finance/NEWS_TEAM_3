@@ -1,8 +1,8 @@
 # 필요한 패키지 불러오기
 import scrapy
 import pandas as pd
-from datetime import datetime
 from ..items import NewsURLItem, NewsItem, CommentItem
+from datetime import datetime
 import requests
 import json
 import re
@@ -339,14 +339,8 @@ class NaverNewsCommentCrawler(scrapy.Spider):
             # loads() 함수를 사용해 JSON 문자열을 객체로 변환해 json_res에 할당
             json_res = json.loads(re.search("\((.*?)\);", res.text).group(1))["result"]["commentList"]
 
-            # 댓글의 개수를 셀 변수 comment_cnt 초기화
-            comment_cnt = 0
-
             # for 반복문을 사용해 각 댓글을 순회
             for comment in json_res:
-
-                # 댓글의 개수를 갱신
-                comment_cnt += 1
 
                 # 뉴스 URL, 댓글을 단 유저 ID 및 닉네임, 작성일자, 내용을 가져와 각 열에 할당
                 item["URL"] = url
@@ -358,12 +352,15 @@ class NaverNewsCommentCrawler(scrapy.Spider):
                 # 결과 값 반환
                 yield item
 
-            # 100개의 댓글이 아닌 경우 댓글 크롤링 중단
-            if comment_cnt != 100:
-                break
-
             # 다음 댓글의 ID를 추출해 변수 next_comment에 할당
             next_comment = json.loads(re.search("\((.*?)\);", res.text).group(1))["result"]["morePage"]["next"]
+
+            # 마지막 댓글의 ID를 추출해 변수 end_comment에 할당
+            end_comment = json.loads(re.search("\((.*?)\);", res.text).group(1))["result"]["morePage"]["end"]
+
+            # 다음 댓글과 마지막 댓글이 같을 경우 댓글 크롤링 중단
+            if next_comment == end_comment:
+                break
 
             # 다음 페이지의 쿼리 스트링(Query String)을 comment_query_url에 새로 할당
             comment_query_url = f"?ticket=news&templateId={template_id[section_id]}&pool=cbox5&lang=ko&objectId=news{press_id}%2C{article_id}&pageSize=100&pageType=more&moreParam.next={next_comment}"

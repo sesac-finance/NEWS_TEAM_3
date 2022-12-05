@@ -18,7 +18,7 @@ class DaumNewsCrawler(scrapy.Spider):
     # 쿼리 스트링(Query String)을 제외한 기본 URL을 base_url에 할당
     base_url = "https://sports.daum.net/media-api/harmony/contents.json"
 
-    # 뉴스 기사 분류 코드를 담은 딕셔너리 categories 초기화 
+    # 뉴스 기사 분류 코드를 담은 딕셔너리 categories 초기화
     categories = {
         1027: ("스포츠", "축구"), 100032: ("스포츠", "해외축구"), 1028: ("스포츠", "야구"), 1015: ("스포츠", "해외야구"), 5000: ("스포츠", "골프"),
         1029: ("스포츠", "농구"), 100033: ("스포츠", "배구"), 1031: ("스포츠", "일반"), 1079: ("스포츠", "e-스포츠")
@@ -66,7 +66,7 @@ class DaumNewsCrawler(scrapy.Spider):
     # start_requests() 함수 정의
     def start_requests(self):
         """
-        크롤링을 수행할 웹 페이지에 HTTPS 요청을 보내고 콜백 함수로서 news_parse() 함수를 호출하는 함수입니다.\n
+        크롤링을 수행할 웹 페이지에 HTTPS 요청을 보내고 콜백 함수로서 news_parser() 함수를 호출하는 함수입니다.\n
         scrapy 모듈의 Request 클래스 객체를 반환합니다.
         """
 
@@ -83,15 +83,15 @@ class DaumNewsCrawler(scrapy.Spider):
             )
 
             # 결과 값 반환
-            yield scrapy.Request(url = self.base_url + query_url, callback = self.news_parse, cb_kwargs = dict(
+            yield scrapy.Request(url = self.base_url + query_url, callback = self.news_parser, cb_kwargs = dict(
                 search_period = search_period,
                 category = category
             ))
 
     # ----------------------------------------------------------------------------------------------------
 
-    # news_parse() 함수 정의
-    def news_parse(self, response, search_period : str, category : int):
+    # news_parser() 함수 정의
+    def news_parser(self, response, search_period : str, category : int):
         """
         JSON 페이지에서 분류, 작성일자, 제목, 내용, URL, 사진 URL, 기자, 뉴스사, 스티커 반응를 추출하고 다음 기사를 호출하는 함수입니다.\n
         scrapy 모듈의 Item 클래스 객체와 Request 클래스 객체를 반환합니다.
@@ -128,7 +128,7 @@ class DaumNewsCrawler(scrapy.Spider):
                 item["PhotoURL"] = self.photo_url_extractor(json_res["result"]["contents"][news]["media"])
 
                 # 뉴스 기사의 스티커 반응을 stickers_crawler() 함수를 호출하여 저장
-                item["Stickers"] = self.stickers_crawler(json_res["result"]["contents"][news]["metaData"][0]["values"][0])
+                item["Stickers"] = self.stickers_crawler(json_res["result"]["contents"][news]["contentUrl"])
                 
                 #  뉴스 기사의 기자 이름을 저장하고, 없는 경우 뉴스사 이름으로 대체
                 try:
@@ -155,7 +155,7 @@ class DaumNewsCrawler(scrapy.Spider):
         )
 
         # 결과 값 반환해 다음 페이지 호출
-        yield scrapy.Request(url = self.base_url + query_url, callback = self.news_parse, cb_kwargs = dict(
+        yield scrapy.Request(url = self.base_url + query_url, callback = self.news_parser, cb_kwargs = dict(
             search_period = search_period,
             category = category
         ))
@@ -201,25 +201,31 @@ class DaumNewsCrawler(scrapy.Spider):
     # ----------------------------------------------------------------------------------------------------
 
     # stickers_crawler() 함수 정의
-    def stickers_crawler(self, item_key : str) -> dict:
+    def stickers_crawler(self, news_url : str) -> dict:
         """
         뉴스의 스티커 반응을 크롤링하여 추출하는 함수입니다.\n
         뉴스의 스티커 반응이 담긴 딕셔너리(Dictionary)를 반환합니다.
         """
 
-        # 스티커 반응이 존재하는 링크를 stickers_url에 할당
-        stickers_url = "https://action.daum.net/apis/v1/reactions/home?itemKey={}".format(item_key)
+        # get() 함수를 사용해 뉴스 기사 URL를 요청해 변수 itemkey_res에 할당
+        itemkey_res = requests.get(url = news_url)
 
-        # get() 함수를 사용해 스티커 반응 정보를 요청해 변수 res에 할당
-        res = requests.get(url = stickers_url, headers = self.headers)
+        # 기사별로 부여된 고유한 ID를 추출해 변수 itemkey에 할당
+        itemkey = Selector(text = itemkey_res.text).css(".alex-actions").attrib["data-item-key"]
+
+        # 스티커 반응이 존재하는 링크를 stickers_url에 할당
+        stickers_url = "https://action.daum.net/apis/v1/reactions/home?itemKey={}".format(itemkey)
+
+        # get() 함수를 사용해 스티커 반응 정보를 요청해 변수 stickers_res에 할당
+        stickers_res = requests.get(url = stickers_url, headers = self.headers)
 
         # loads() 함수를 사용해 JSON 문자열을 객체로 변환해 각 스티커 반응을 딕셔너리 stickers_dict에 할당
         stickers_dict = {
-            "추천해요": json.loads(res.text)["item"]["stats"]["RECOMMEND"],
-            "좋아요": json.loads(res.text)["item"]["stats"]["LIKE"],
-            "감동이에요": json.loads(res.text)["item"]["stats"]["IMPRESS"],
-            "화나요": json.loads(res.text)["item"]["stats"]["ANGRY"],
-            "슬퍼요": json.loads(res.text)["item"]["stats"]["SAD"]
+            "추천해요": json.loads(stickers_res.text)["item"]["stats"]["RECOMMEND"],
+            "좋아요": json.loads(stickers_res.text)["item"]["stats"]["LIKE"],
+            "감동이에요": json.loads(stickers_res.text)["item"]["stats"]["IMPRESS"],
+            "화나요": json.loads(stickers_res.text)["item"]["stats"]["ANGRY"],
+            "슬퍼요": json.loads(stickers_res.text)["item"]["stats"]["SAD"]
         }
 
         # 결과 값 반환

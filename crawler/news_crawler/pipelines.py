@@ -1,5 +1,7 @@
 # 필요한 패키지 불러오기
 from scrapy.exporters import CsvItemExporter
+import requests
+import json
 import pandas as pd
 from scrapy.exceptions import DropItem
 
@@ -35,11 +37,26 @@ class MultiCSVItemPipeline(object):
             # 저장할 파일 이름을 "daum_news"로 설정
             export_name = self.export_names[0]
 
+            # 쿼리 스트링(Query String)을 제외한 기본 URL을 base_url에 할당
+            base_url = "https://sports.daum.net/media-api/harmony/contents.json"
+
+            # 수집할 한 달 간의 날짜를 담은 search_period 변수 초기화
+            search_period = "20221101000000~20221130235959"
+
+            # 쿼리 스트링(Query String)을 query_url에 할당
+            query_url = r"?consumerType=HARMONY&createDt={0}&discoveryTag%5B0%5D=%257B%2522group%2522%253A%2522media%2522%252C%2522key%2522%253A%2522defaultCategoryId3%2522%252C%2522value%2522%253A%25221004%2522%257D&size=100".format(search_period)
+
+            # get() 함수를 사용해 뉴스 기사 정보를 요청해 변수 res에 할당
+            res = requests.get(url = base_url + query_url)
+
+            # loads() 함수를 사용해 JSON 문자열을 객체로 변환하고 뉴스 수를 추출해 변수 total_cnt에 할당
+            total_cnt = int(json.loads(res.text)["result"]["total"])
+
             # 50,000개 데이터가 담길 수 있도록 지정한 파일 이름으로 여러 개의 CSV 파일을 생성 후 열기
-            self.files = dict([(file_num, open(self.export_dir + f"news_3_{export_name}_{file_num}.csv", "wb")) for file_num in range(1, 4, 1)])
+            self.files = dict([(file_num, open(self.export_dir + f"news_3_{export_name}_{file_num}.csv", "wb")) for file_num in range(1, total_cnt // 50000 + 2, 1)])
 
             # 각 CSV 파일로 내보내기 시작
-            self.exporters = dict([(file_num, CsvItemExporter(self.files[file_num], encoding = "utf-8-sig")) for file_num in range(1, 4, 1)])
+            self.exporters = dict([(file_num, CsvItemExporter(self.files[file_num], encoding = "utf-8-sig")) for file_num in range(1, total_cnt // 50000 + 2, 1)])
             for csv_exporter in self.exporters.values():
                 csv_exporter.fields_to_export = ["MainCategory", "SubCategory", "WritedAt", "Title", "Content", "URL", "PhotoURL", "Writer", "Press", "Stickers"] 
                 csv_exporter.start_exporting()
@@ -122,7 +139,7 @@ class MultiCSVItemPipeline(object):
             list(self.exporters.values())[(self.item_cnt - 1) // 50000].export_item(item)
 
             # 크롤링 중인 객체 수를 알려주는 메시지 출력
-        print(">>> {0}번째 데이터의 수집이 완료되었습니다.\n".format(self.item_cnt))
+            print(">>> {0}번째 데이터의 수집이 완료되었습니다.\n".format(self.item_cnt))
 
         # 결과 값 반환
         return item
