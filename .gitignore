@@ -5,6 +5,7 @@
 
 # Data Files
 data/*.csv
+data.zip
 
 # C Extensions
 *.so

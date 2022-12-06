@@ -4,6 +4,7 @@ import requests
 import json
 import pandas as pd
 from scrapy.exceptions import DropItem
+import os
 
 # ----------------------------------------------------------------------------------------------------
 
@@ -103,10 +104,10 @@ class MultiCSVItemPipeline(object):
             news_df = pd.read_csv(self.export_dir + "news_3_naver_url.csv", header = 0, encoding = "utf-8-sig")
 
             # 50,000개 데이터가 담길 수 있도록 지정한 파일 이름으로 여러 개의 CSV 파일을 생성 후 열기
-            self.files = dict([(file_num, open(self.export_dir + f"news_3_{export_name}_{file_num}.csv", "wb")) for file_num in range(1, 21, 1)])
+            self.files = dict([(file_num, open(self.export_dir + f"news_3_{export_name}_{file_num}.csv", "wb")) for file_num in range(1, 101, 1)])
 
             # 각 CSV 파일로 내보내기 시작
-            self.exporters = dict([(file_num, CsvItemExporter(self.files[file_num], encoding = "utf-8-sig")) for file_num in range(1, 21, 1)])
+            self.exporters = dict([(file_num, CsvItemExporter(self.files[file_num], encoding = "utf-8-sig")) for file_num in range(1, 101, 1)])
             for csv_exporter in self.exporters.values():
                 csv_exporter.fields_to_export = ["URL", "UserID", "UserName", "WritedAt", "Content"] 
                 csv_exporter.start_exporting()
@@ -170,3 +171,39 @@ class MultiCSVItemPipeline(object):
 
             # 각 CSV 파일 종료
             [csv_file.close() for csv_file in self.files.values()]
+
+            # 코멘트 크롤러의 경우 빈 CSV 파일을 제거하는 blank_file_remover() 함수 실행
+            if spider.name == "NaverNewsCommentCrawler":
+                self.blank_file_remover()
+
+    # ----------------------------------------------------------------------------------------------------
+
+    # blank_file_remover() 함수 정의
+    def blank_file_remover(self):
+        """
+        스파이더 종료 후 빈 CSV 파일을 제거하는 함수입니다.
+        """
+
+        # listdir() 함수를 사용해 CSV 파일의 경로에 담긴 파일 목록을 리스트 file_list에 할당
+        file_list = os.listdir(self.export_dir)
+
+        # 빈 CSV 파일을 담을 리스트 blank_csv_list 초기화
+        blank_csv_list = []
+
+        # for 반복문을 사용해 파일 목록에 담긴 각 파일을 순회
+        for file in file_list:
+
+            # 댓글을 담은 CSV 파일인 경우 불러오기 오류가 발생 시 해당 파일을 blank_csv_list에 추가
+            if "naver_comment" in file:
+                try:
+                    blank_checker = pd.read_csv(self.export_dir + file)
+                    del blank_checker
+                except pd.errors.EmptyDataError:
+                    blank_csv_list.append(file)
+
+        # for 반복문을 사용해 빈 CSV 파일 목록을 순회하며 파일을 삭제
+        for file in blank_csv_list:
+            os.remove(self.export_dir + file)
+
+        # 빈 CSV 파일 삭제를 알려주는 메시지 출력
+        print(">>>빈 CSV 파일을 모두 삭제하였습니다.\n".format(self.item_cnt))
