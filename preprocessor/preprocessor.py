@@ -41,7 +41,7 @@ class ArticlePreprocessor():
         warnings.filterwarnings(action = "ignore", category = UserWarning)
 
         # 뉴스 기사 테이블(Table)에서 뉴스 ID, 대분류, 제목, 내용을 불러오는 쿼리(Query)문을 sql에 할당
-        sql =  "SELECT ID, MainCategory, Title, Content FROM tb_news"
+        sql =  "SELECT ID, Title, Content FROM tb_news"
 
         # read_sql() 함수를 사용해 필요한 데이터를 불러와 데이터프레임으로 변환
         self.raw_data = pd.read_sql(sql = sql, con = connection).loc[: 10000]
@@ -59,7 +59,7 @@ class ArticlePreprocessor():
         """
 
         # 전처리된 결과를 담을 preprocessed_data 데이터프레임 초기화
-        preprocessed_data = self.raw_data[["ID", "MainCategory"]].copy()
+        preprocessed_data = self.raw_data[["ID"]].copy()
 
         # text_cleanser() 함수를 호출해 불필요한 내용 제거 작업 수행 후 안내 메시지 출력
         preprocessed_data["Title"] = self.raw_data["Title"].copy().apply(lambda x: self.text_cleanser(x))
