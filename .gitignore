@@ -5,6 +5,13 @@
 
 # Data Files
 data/*.csv
+data.zip
+
+# Test Files
+*.ipynb
+
+# Configuration Files
+*config*
 
 # C Extensions
 *.so
