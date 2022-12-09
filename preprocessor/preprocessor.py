@@ -44,7 +44,7 @@ class ArticlePreprocessor():
         sql =  "SELECT ID, Title, Content FROM tb_news"
 
         # read_sql() 함수를 사용해 필요한 데이터를 불러와 데이터프레임으로 변환
-        self.raw_data = pd.read_sql(sql = sql, con = connection).loc[: 10000]
+        self.raw_data = pd.read_sql(sql = sql, con = connection).loc[: 100000]
 
         # resetwarnings() 함수를 사용해 경고문 출력을 초기화
         warnings.resetwarnings()

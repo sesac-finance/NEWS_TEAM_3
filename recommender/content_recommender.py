@@ -20,14 +20,23 @@ def content_recommender(preprocessed_data : pd.DataFrame) -> pd.DataFrame:
     doc2vec_list = doc2vec_data_maker(doc2vec_data)
     tagged_doc2vec_list = doc2vec_data_maker(doc2vec_data, tagged_document = True)
 
-    # doc2vec_model_maker() 함수를 호출해 모형을 반환
-    model = doc2vec_model_maker(tagged_doc2vec_list)
+    # doc2vec_model_maker() 함수를 호출해 모형을 저장
+    doc2vec_model_maker(tagged_doc2vec_list)
+
+    # load() 메서드를 사용해 모형을 불러와 model에 할당
+    model = Doc2Vec.load("./data/newflix_content_model.doc2vec")
+
+    # 모형 생성 완료를 알려주는 안내 메시지 출력
+    print(f">>> Doc2Vec 모형 학습이 완료되었습니다.\n")
 
     # 추천 시스템에 의한 뉴스 추천 목록을 저장할 데이터프레임 reulst_df 초기화
     result_df = pd.DataFrame(columns = ["ID", "Recommendation"])
 
     # for 반복문을 사용해 각 뉴스 기사의 ID 값을 순회
-    for news_id in preprocessed_data["ID"]:
+    for news_id in preprocessed_data.loc["ID"]:
+
+        # 코사인 유사도 계산 중인 뉴스 ID를 알려주는 안내 메시지 출력
+        print(f">>> {news_id}번 뉴스의 코사인 유사도를 계산을 시작합니다.\n")
 
         # 코사인 유사도 점수를 담을 리스트 scores 초기화
         scores = []
@@ -50,7 +59,13 @@ def content_recommender(preprocessed_data : pd.DataFrame) -> pd.DataFrame:
         # concat() 함수를 사용해 result_df에 temp_df 병합
         result_df = pd.concat([result_df, temp_df], axis = 0, ignore_index = True)
 
-    # 결과 값 반환    
+        # 코사인 유사도 계산이 완료된 뉴스 ID를 알려주는 안내 메시지 출력
+        print(f">>> {news_id}번 뉴스의 코사인 유사도를 계산이 완료되었습니다.\n")
+
+    # 코사인 유사도 계산 완료를 알려주는 안내 메시지 출력
+    print(f">>> 코사인 유사도를 계산이 모두 완료되었습니다.\n")
+
+    # 결과 값 반환
     return result_df
 
 # ----------------------------------------------------------------------------------------------------
@@ -117,7 +132,7 @@ def doc2vec_data_maker(doc2vec_data : pd.DataFrame, tagged_document : bool = Fal
 def doc2vec_model_maker(tagged_doc2vec_list, vector_size : int = 128, window : int = 3, epochs : int = 40, min_count : int = 1, workers : int = 4) -> Doc2Vec:
     """
     Doc2Vec 모형을 만들고, TaggedDocument 객체로 가공된 데이터로 학습을 수행하는 함수입니다.\n
-    학습 수행의 결과를 담은 Doc2Vec 객체를 반환합니다.\n
+    학습 수행의 결과를 담은 Doc2Vec 파일을 저장합니다.\n
     [인수 ①] vector_size: 임베딩 벡터의 크기\n
     [인수 ②] window: 학습 시 앞뒤로 고려하는 단어의 개수\n
     [인수 ③] epochs: 학습의 반복 횟수\n
@@ -135,5 +150,5 @@ def doc2vec_model_maker(tagged_doc2vec_list, vector_size : int = 128, window : i
         workers = workers
     )
 
-    # 결과 값 반환
-    return model
+    # save() 메서드를 사용해 모형을 저장
+    model.save("./data/newflix_content_model.doc2vec")
